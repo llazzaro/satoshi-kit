@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 
 import click
@@ -53,8 +54,25 @@ def info(key: str, network: str | None) -> None:
     click.echo(f"Pubkey:              {ki.public_key.hex()}")
 
 
+def _resolve_wallet(wallet: str, wallet_file: str | None) -> tuple[str, str]:
+    """Return (directory, filename) from a --wallet path.
+
+    If *wallet* points to a file, its parent directory is used and
+    the basename becomes the wallet filename (unless *wallet_file*
+    was explicitly provided).
+    """
+    wallet = os.path.expanduser(wallet)
+    if os.path.isfile(wallet):
+        wallet_dir = os.path.dirname(wallet)
+        wf = wallet_file or os.path.basename(wallet)
+    else:
+        wallet_dir = wallet
+        wf = wallet_file or "wallet.dat"
+    return wallet_dir, wf
+
+
 @cli.command()
-@click.option("--wallet", required=True, help="Wallet directory path.")
+@click.option("--wallet", required=True, help="Wallet directory or file path.")
 @click.option("--wallet-file", default=None, help="Wallet filename (default: wallet.dat).")
 @click.option("--passphrase", default=None, help="Wallet passphrase.")
 @click.option("--format", "fmt", default="all", type=click.Choice(["all", "addr", "keys"]), help="Output format.")
@@ -69,8 +87,8 @@ def dump(wallet: str, wallet_file: str | None, passphrase: str | None, fmt: str,
     if network:
         net = find_network(network) or BITCOIN
 
-    db_env = create_env(wallet)
-    wf = wallet_file or "wallet.dat"
+    wallet_dir, wf = _resolve_wallet(wallet, wallet_file)
+    db_env = create_env(wallet_dir)
     wallet_data = read_wallet(db_env, wf, passphrase=passphrase, network=net)
 
     output: dict[str, object] = {}
@@ -96,7 +114,7 @@ def dump(wallet: str, wallet_file: str | None, passphrase: str | None, fmt: str,
 
 
 @cli.command("import")
-@click.option("--wallet", required=True, help="Wallet directory path.")
+@click.option("--wallet", required=True, help="Wallet directory or file path.")
 @click.option("--wallet-file", default=None, help="Wallet filename (default: wallet.dat).")
 @click.option("--key", required=True, help="WIF or hex private key.")
 @click.option("--label", default="", help="Address book label.")
@@ -122,8 +140,8 @@ def import_key(
     if network:
         net = find_network(network) or BITCOIN
 
-    db_env = create_env(wallet)
-    wf = wallet_file or "wallet.dat"
+    wallet_dir, wf = _resolve_wallet(wallet, wallet_file)
+    db_env = create_env(wallet_dir)
 
     wallet_data = read_wallet(db_env, wf, network=net)
     db = open_wallet(db_env, wf, writable=True)

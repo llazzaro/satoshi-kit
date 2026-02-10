@@ -33,6 +33,13 @@ For Bitcoin Core `wallet.dat` operations (requires Berkeley DB headers):
 pip install satoshi-kit[wallet]
 ```
 
+### Using uv
+
+```bash
+uv sync              # core only
+uv sync --extra wallet  # with wallet.dat support
+```
+
 ### macOS (Homebrew)
 
 The `wallet` extra depends on `bsddb3`, which needs Berkeley DB headers. Install them first:
